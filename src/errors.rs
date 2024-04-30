@@ -8,7 +8,8 @@ use std::{
 pub enum Errors {
     BufferEnd,
     BufferOverflow,
-    FileErr(io::Error),
+    IOErr(io::Error),
+    InvalidLabelLen,
     JumpCycle,
     RangeErr,
 }
@@ -19,7 +20,8 @@ impl Display for Errors {
         match self {
             Self::BufferEnd => write!(f, "buffer end reached"),
             Self::BufferOverflow => write!(f, "buffer overflow"),
-            Self::FileErr(e) => write!(f, "{}", e),
+            Self::IOErr(e) => write!(f, "{}", e),
+            Self::InvalidLabelLen => write!(f, "label exceeds 63 characters"),
             Self::RangeErr => write!(f, "invalid range"),
             Self::JumpCycle => write!(f, "max number of jumps exceeded"),
         }

@@ -28,8 +28,10 @@ impl DNSPacket {
         }
     }
 
+    /// Parse the entire DNS packet from the given buffer
     pub fn parse(&mut self, buf: &mut RawPacket) -> Result<()> {
         self.header.parse(buf)?;
+
         for _ in 0..self.header.qd_count {
             let mut question = Question::new();
             question.parse(buf)?;
@@ -49,6 +51,29 @@ impl DNSPacket {
         for _ in 0..self.header.ar_count {
             let record = Record::parse(buf)?;
             self.additional_sec.push(record);
+        }
+
+        Ok(())
+    }
+
+    /// Write the entire DNS packet into the given buffer
+    pub fn write(&self, buf: &mut RawPacket) -> Result<()> {
+        self.header.write(buf)?;
+
+        for que in &self.question_sec {
+            que.write(buf)?;
+        }
+
+        for rec in &self.answer_sec {
+            rec.write(buf)?;
+        }
+
+        for rec in &self.authority_sec {
+            rec.write(buf)?;
+        }
+
+        for rec in &self.additional_sec {
+            rec.write(buf)?;
         }
 
         Ok(())

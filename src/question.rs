@@ -14,7 +14,7 @@ impl QueryType {
         }
     }
 
-    fn to_num(&self) -> u16 {
+    pub fn to_num(&self) -> u16 {
         match self {
             Self::Unknown(num) => *num,
             Self::A => 1,
@@ -26,11 +26,11 @@ impl QueryType {
 /// The Question Section stories information about the query
 pub struct Question {
     /// The domain name being queried
-    name: String, // variable bit length
+    pub name: String, // variable bit length
     /// The record type requested for the query
-    query_type: QueryType, // 16 bits
+    pub query_type: QueryType, // 16 bits
     /// The record class, in practice always 1
-    class: u16, // 16 bits
+    pub class: u16, // 16 bits
 }
 
 impl Question {
@@ -43,10 +43,20 @@ impl Question {
         }
     }
 
+    /// Parse the question query from the given buffer
     pub fn parse(&mut self, buf: &mut RawPacket) -> Result<()> {
         buf.read_query_name(&mut self.name)?;
         self.query_type = QueryType::from_num(buf.read_u16()?);
         self.class = buf.read_u16()?;
+
+        Ok(())
+    }
+
+    /// Write a question into a RawPacket
+    pub fn write(&self, buf: &mut RawPacket) -> Result<()> {
+        buf.write_query_name(&self.name)?;
+        buf.write_u16(self.query_type.to_num())?;
+        buf.write_u16(self.class)?;
 
         Ok(())
     }

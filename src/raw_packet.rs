@@ -1,5 +1,5 @@
 use super::errors::{
-    Errors::{BufferEnd, BufferOverflow, JumpCycle, RangeErr},
+    Errors::{BufferEnd, BufferOverflow, InvalidLabelLen, JumpCycle, RangeErr},
     Result,
 };
 
@@ -159,5 +159,54 @@ impl RawPacket {
         }
 
         Ok(&self.buf[start..=end])
+    }
+
+    /// Write one byte into the buffer
+    pub fn write_u8(&mut self, data: u8) -> Result<()> {
+        if self.cursor >= PACKET_SIZE {
+            return Err(BufferOverflow);
+        }
+        self.buf[self.cursor] = data;
+        self.cursor += 1;
+
+        Ok(())
+    }
+
+    /// Write two bytes into the buffer
+    pub fn write_u16(&mut self, data: u16) -> Result<()> {
+        let mask = 0b0000_0000_1111_1111;
+        for i in 1..=2 {
+            self.write_u8(((data >> (16 - (8 * i))) & mask) as u8)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write four bytes into the buffer
+    pub fn write_u32(&mut self, data: u32) -> Result<()> {
+        let mask = 0b0000_0000_0000_0000_0000_0000_1111_1111;
+        for i in 1..=4 {
+            self.write_u8(((data >> (32 - (8 * i))) & mask) as u8)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write the given domain in labeled form into the buffer
+    pub fn write_query_name(&mut self, domain: &str) -> Result<()> {
+        for label in domain.split('.') {
+            let len = label.len();
+            if len > 63 {
+                return Err(InvalidLabelLen);
+            }
+
+            self.write_u8(len as u8)?; // write length of following label
+            for byte in label.bytes() {
+                self.write_u8(byte)?;
+            }
+        }
+
+        self.write_u8(0)?; // to indicate end of query
+        Ok(())
     }
 }

@@ -74,4 +74,39 @@ impl Record {
             }
         }
     }
+
+    /// Write a record into a RawPacket
+    pub fn write(&self, buf: &mut RawPacket) -> Result<()> {
+        match self {
+            Self::A { preamble, ip } => {
+                Self::write_preamble(preamble, buf)?;
+
+                for octet in ip.octets() {
+                    buf.write_u8(octet)?;
+                }
+
+                Ok(())
+            }
+            Self::Unknown { preamble, data } => {
+                Self::write_preamble(preamble, buf)?;
+
+                for byte in data {
+                    buf.write_u8(*byte)?;
+                }
+
+                Ok(())
+            }
+        }
+    }
+
+    /// Write a record into a RawPacket
+    fn write_preamble(preamble: &RecordPreamble, buf: &mut RawPacket) -> Result<()> {
+        buf.write_query_name(&preamble.name)?;
+        buf.write_u16(preamble.query_type.to_num())?;
+        buf.write_u16(preamble.class)?;
+        buf.write_u32(preamble.ttl)?;
+        buf.write_u16(preamble.len)?;
+
+        Ok(())
+    }
 }

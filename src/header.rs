@@ -39,7 +39,7 @@ impl ResponseCode {
 /// DNS Header stores meta information about the packet
 pub struct Header {
     /// Random identifier assigned to query packets. Response packets must reply wth same id
-    id: u16, // 16 bits
+    pub id: u16, // 16 bits
     /// If packet is a query
     qr: bool, // 1 bit
     /// Operation Code, usually always 0
@@ -49,7 +49,7 @@ pub struct Header {
     /// If it is a truncated message (original packet exceeds 512 bytes)
     tc: bool, // 1 bit
     /// If server should attempt recursive resolution
-    rd: bool, // 1 bit
+    pub rd: bool, // 1 bit
     /// If server can satisfy recursive queries
     ra: bool, // 1 bit
     /// Used for DNSSEC queries
@@ -106,6 +106,25 @@ impl Header {
         self.an_count = buf.read_u16()?;
         self.ns_count = buf.read_u16()?;
         self.ar_count = buf.read_u16()?;
+
+        Ok(())
+    }
+
+    /// Write a DNS Header into a RawPacket
+    pub fn write(&self, buf: &mut RawPacket) -> Result<()> {
+        buf.write_u16(self.id)?;
+        buf.write_u8(
+            ((self.qr as u8) << 7)
+                | (self.op_code << 3)
+                | ((self.aa as u8) << 2)
+                | ((self.tc as u8) << 1)
+                | (self.rd as u8),
+        )?;
+        buf.write_u8(((self.ra as u8) << 7) | (self.z << 4) | self.rcode.to_num())?;
+        buf.write_u16(self.qd_count)?;
+        buf.write_u16(self.an_count)?;
+        buf.write_u16(self.ns_count)?;
+        buf.write_u16(self.ar_count)?;
 
         Ok(())
     }

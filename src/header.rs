@@ -2,9 +2,9 @@ use super::{errors::Result, raw_packet::RawPacket};
 
 #[derive(Debug)]
 /// Represent the response code of the packet
-enum ResponseCode {
+pub enum ResponseCode {
     Noerror,
-    Former,
+    Formerr,
     Servfail,
     Nxdomain,
     Notimp,
@@ -14,7 +14,7 @@ enum ResponseCode {
 impl ResponseCode {
     fn from_num(code: u8) -> Self {
         match code {
-            1 => Self::Former,
+            1 => Self::Formerr,
             2 => Self::Servfail,
             3 => Self::Nxdomain,
             4 => Self::Notimp,
@@ -26,7 +26,7 @@ impl ResponseCode {
     fn to_num(&self) -> u8 {
         match self {
             Self::Noerror => 0,
-            Self::Former => 1,
+            Self::Formerr => 1,
             Self::Servfail => 2,
             Self::Nxdomain => 3,
             Self::Notimp => 4,
@@ -41,7 +41,7 @@ pub struct Header {
     /// Random identifier assigned to query packets. Response packets must reply wth same id
     pub id: u16, // 16 bits
     /// If packet is a query
-    qr: bool, // 1 bit
+    pub qr: bool, // 1 bit
     /// Operation Code, usually always 0
     op_code: u8, // 4 bits
     /// If responding server is authoritative
@@ -51,11 +51,11 @@ pub struct Header {
     /// If server should attempt recursive resolution
     pub rd: bool, // 1 bit
     /// If server can satisfy recursive queries
-    ra: bool, // 1 bit
+    pub ra: bool, // 1 bit
     /// Used for DNSSEC queries
     z: u8, // 3 bits
     /// Response code
-    rcode: ResponseCode, // 4 bits
+    pub rcode: ResponseCode, // 4 bits
     /// Number of entries in Question Section
     pub qd_count: u16, // 16 bits
     /// Number of entries in Answer Section

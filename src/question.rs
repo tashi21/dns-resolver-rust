@@ -4,12 +4,20 @@ use super::{errors::Result, raw_packet::RawPacket};
 pub enum QueryType {
     Unknown(u16),
     A,
+    NS,
+    Cname,
+    MX,
+    Aaaa,
 }
 
 impl QueryType {
     pub fn from_num(rec_type: u16) -> Self {
         match rec_type {
             1 => Self::A,
+            2 => Self::NS,
+            5 => Self::Cname,
+            15 => Self::MX,
+            28 => Self::Aaaa,
             _ => Self::Unknown(rec_type),
         }
     }
@@ -18,6 +26,10 @@ impl QueryType {
         match self {
             Self::Unknown(num) => *num,
             Self::A => 1,
+            Self::NS => 2,
+            Self::Cname => 5,
+            Self::MX => 15,
+            Self::Aaaa => 28,
         }
     }
 }

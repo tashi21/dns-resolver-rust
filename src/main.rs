@@ -7,7 +7,7 @@ mod record;
 
 use dns_packet::DNSPacket;
 use errors::{Errors::IOErr, Result};
-use question::{QueryType::A, Question};
+use question::{QueryType, Question};
 use raw_packet::RawPacket;
 use std::net::UdpSocket;
 
@@ -27,7 +27,7 @@ fn main() -> Result<()> {
 
     let mut que = Question::new();
     que.name = String::from("www.yahoo.com");
-    que.query_type = A;
+    que.query_type = QueryType::MX;
     que.class = 1;
     packet.question_sec.push(que);
 

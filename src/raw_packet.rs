@@ -209,4 +209,21 @@ impl RawPacket {
         self.write_u8(0)?; // to indicate end of query
         Ok(())
     }
+
+    fn set(&mut self, pos: usize, data: u8) -> Result<()> {
+        if pos >= PACKET_SIZE {
+            return Err(BufferOverflow);
+        }
+
+        self.buf[pos] = data;
+
+        Ok(())
+    }
+
+    pub fn set_u16(&mut self, pos: usize, data: u16) -> Result<()> {
+        self.set(pos, (data >> 8) as u8)?;
+        self.set(pos + 1, (data & 0b0000_0000_1111_1111) as u8)?;
+
+        Ok(())
+    }
 }

@@ -1,4 +1,4 @@
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use super::{errors::Result, question::QueryType, raw_packet::RawPacket};
 
@@ -27,6 +27,23 @@ pub enum Record {
     A {
         preamble: RecordPreamble,
         ip: Ipv4Addr,
+    },
+    NS {
+        preamble: RecordPreamble,
+        name: String,
+    },
+    Cname {
+        preamble: RecordPreamble,
+        name: String,
+    },
+    MX {
+        preamble: RecordPreamble,
+        priority: u16,
+        name: String,
+    },
+    Aaaa {
+        preamble: RecordPreamble,
+        ip: Ipv6Addr,
     },
 }
 
@@ -57,21 +74,56 @@ impl Record {
                     data: buf.get_bytes_from(pos, pos + len as usize - 1)?.into(),
                 })
             }
-            QueryType::A => {
-                let mask = 0b1111_1111;
-                let raw_address = buf.read_u32()?;
-                let address = Ipv4Addr::new(
-                    ((raw_address >> 24) & mask) as u8,
-                    ((raw_address >> 16) & mask) as u8,
-                    ((raw_address >> 8) & mask) as u8,
-                    (raw_address & mask) as u8,
-                );
 
-                Ok(Record::A {
+            QueryType::A => Ok(Record::A {
+                preamble,
+                ip: Ipv4Addr::new(
+                    buf.read_u8()?,
+                    buf.read_u8()?,
+                    buf.read_u8()?,
+                    buf.read_u8()?,
+                ),
+            }),
+
+            QueryType::NS => {
+                let mut name = String::new();
+                buf.read_query_name(&mut name)?;
+
+                Ok(Record::NS { preamble, name })
+            }
+
+            QueryType::Cname => {
+                let mut name = String::new();
+                buf.read_query_name(&mut name)?;
+
+                Ok(Record::Cname { preamble, name })
+            }
+
+            QueryType::MX => {
+                let priority = buf.read_u16()?;
+                let mut name = String::new();
+                buf.read_query_name(&mut name)?;
+
+                Ok(Record::MX {
                     preamble,
-                    ip: address,
+                    priority,
+                    name,
                 })
             }
+
+            QueryType::Aaaa => Ok(Record::Aaaa {
+                preamble,
+                ip: Ipv6Addr::new(
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                    buf.read_u16()?,
+                ),
+            }),
         }
     }
 
@@ -87,6 +139,46 @@ impl Record {
 
                 Ok(())
             }
+
+            Self::NS { preamble, name } => {
+                let len_pos = Self::write_preamble(preamble, buf)?;
+                buf.write_query_name(name)?;
+                buf.set_u16(len_pos, (buf.cursor() - (len_pos + 2)) as u16)?;
+
+                Ok(())
+            }
+
+            Self::Cname { preamble, name } => {
+                let len_pos = Self::write_preamble(preamble, buf)?;
+                buf.write_query_name(name)?;
+                buf.set_u16(len_pos, (buf.cursor() - (len_pos + 2)) as u16)?;
+
+                Ok(())
+            }
+
+            Self::MX {
+                preamble,
+                priority,
+                name,
+            } => {
+                let len_pos = Self::write_preamble(preamble, buf)?;
+                buf.write_u16(*priority)?;
+                buf.write_query_name(name)?;
+                buf.set_u16(len_pos, (buf.cursor() - (len_pos + 2)) as u16)?;
+
+                Ok(())
+            }
+
+            Self::Aaaa { preamble, ip } => {
+                Self::write_preamble(preamble, buf)?;
+
+                for segment in ip.segments() {
+                    buf.write_u16(segment)?;
+                }
+
+                Ok(())
+            }
+
             Self::Unknown { preamble, data } => {
                 Self::write_preamble(preamble, buf)?;
 
@@ -99,14 +191,15 @@ impl Record {
         }
     }
 
-    /// Write a record into a RawPacket
-    fn write_preamble(preamble: &RecordPreamble, buf: &mut RawPacket) -> Result<()> {
+    /// Write a record into a RawPacket and return the position where the length was written
+    fn write_preamble(preamble: &RecordPreamble, buf: &mut RawPacket) -> Result<usize> {
         buf.write_query_name(&preamble.name)?;
         buf.write_u16(preamble.query_type.to_num())?;
         buf.write_u16(preamble.class)?;
         buf.write_u32(preamble.ttl)?;
+        let len_pos = buf.cursor();
         buf.write_u16(preamble.len)?;
 
-        Ok(())
+        Ok(len_pos)
     }
 }

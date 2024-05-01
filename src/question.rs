@@ -1,6 +1,6 @@
 use super::{errors::Result, raw_packet::RawPacket};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum QueryType {
     Unknown(u16),
     A,

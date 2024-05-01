@@ -74,7 +74,7 @@ fn handle_query(socket: &UdpSocket) -> Result<()> {
 
     // expect 1 question only
     if let Some(que) = query_packet.question_sec.pop() {
-        if let Ok(result) = lookup(&que.name, que.query_type) {
+        if let Ok(result) = lookup(&que.name, que.query_type.clone()) {
             res_packet.question_sec.push(que); // add question to response packet also
             res_packet.header.rcode = result.header.rcode; // same response code as query
 
@@ -104,7 +104,7 @@ fn handle_query(socket: &UdpSocket) -> Result<()> {
     let len = res_buf.cursor();
     let data = res_buf.get_bytes_from(0, len - 1)?;
 
-    socket.send_to(data, query_src)?;
+    socket.send_to(data, query_src).map_err(IOErr)?;
 
     Ok(())
 }
